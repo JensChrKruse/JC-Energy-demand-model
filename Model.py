@@ -36,11 +36,6 @@ class M:
     self.holiday_list = exoginputs.create_holiday_list(country, int(t_start))
     self.n_clusters = spatial.n_clusters(area)
 
-country = 'GB'
-region = 'GB'
-
-run_model(region, country)
-
 def run_model(region, country):
   ## ----------------------------- Initialize model ----------------------------- ##
   m_cluster = M(setup.model_type, setup.t_start_cluster, setup.t_end_cluster, region, country)
@@ -145,7 +140,7 @@ def main():
   regions = geo['ENTSOE region code'].values
 
   # Run model for each region
-  for i in range(26, len(regions)):
+  for i in range(0, len(regions)):
     print('################### Running region ' + regions[i] + ' ###################')
     run_model(regions[i], countries[i])
 
