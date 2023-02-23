@@ -28,7 +28,7 @@ def demand_hindcast(region, type):
 
     return df
 
-# Import electricity demand data
+# Import degree day hindcast
 def degdays_hindcast(area):
     file = setup.outputdatafolder + '/' + area + ' deg_days.csv'
     df = pd.read_csv(file)
@@ -54,13 +54,14 @@ def hydro_hindcast_ENTSOE(area, type):
 
     capacity = pd.read_excel(file, sheet_name=type, skiprows=4, nrows=1, usecols='C').fillna(0).values[0][0]
 
-    # Only output if both inflow profile and capacity is available
+    # Output zero if inflow profile or capacity is unavailable
     if (df.sum().sum() == 0) or (capacity == 0):
         df[:] = 0
         capacity = 0
 
     return df, capacity
 
+# Import hydro hindcast for regions in Italy and aggregate to country level
 def IT_hydro_hindcast_ENTSOE(type):
     df_ITCA, capacity_ITCA = hydro_hindcast_ENTSOE('ITCA', type)
     df_ITCN, capacity_ITCN = hydro_hindcast_ENTSOE('ITCN', type)
@@ -85,8 +86,6 @@ def IT_hydro_hindcast_ENTSOE(type):
 
     return df, capacity
 
-
-
 # Import Copernicus hydro hindcast data
 def hydro_hindcast_Copernicus(type):
     file = 'Geodata/Copernicus/Copernicus_Hydro_' + type + '.csv'
@@ -98,6 +97,7 @@ def hydro_hindcast_Copernicus(type):
 
     return df
 
+# Import electricity dispatch data from ENTSOE
 def production_ENTSOE(region):
     file = 'ENTSOE energy production/Actual Generation per Production Type_201601010000-201701010000_' + region + '.csv'
     df = pd.read_csv(file, index_col=1)
@@ -108,6 +108,7 @@ def production_ENTSOE(region):
 
     return df_sum
 
+# Import day-ahead prices from ENTSOE
 def day_ahead_prices_ENTSOE(region):
     file = 'ENTSOE day-ahead prices/Day-ahead Prices_201601010000-201701010000_' + region + '.csv'
     df = pd.read_csv(file, index_col=0)
@@ -118,7 +119,6 @@ def day_ahead_prices_ENTSOE(region):
 
     return df_mean
 
-
 # Import Copernicus power hindcast data
 def power_hindcast_Copernicus():
     file = 'Geodata/Copernicus/Copernicus_Power_Demand.csv'
@@ -127,7 +127,7 @@ def power_hindcast_Copernicus():
 
     return df
 
-
+# Function to import OPSD/ENTSOE demand data, filter regions and output csv files per region
 def filter_demand_area():
     area = 'LU'
     #df = pd.read_excel('OPSD_time_series.xlsx', sheet_name='60min')
@@ -199,52 +199,6 @@ def request_weather():
 
     df.to_csv('temperature_all.csv')
 
-def request_irr():
-    # Irradiance
-    file = 'Geodata/ERA5/Irradiance_All_1982-2020/GHI_' + str(1) + '.csv'
-    df = pd.read_csv(file)
-    df = df.set_index('time') # Set time as index
-    
-    for i in range(2,7):
-        print(i)
-        file = 'Geodata/ERA5/Irradiance_All_1982-2020/GHI_' + str(i) + '.csv'
-        df2 = pd.read_csv(file)
-        df2 = df2.set_index('time') # Set time as index
-        df = df.join(df2)
-    
-    df = df.rename(columns={"time":"Time"})
-    df = df.set_index('time') # Set time as index
-    df.index = pd.to_datetime(df.index, format='%Y-%m-%d %H:%M:%S', utc=True)
-    df.to_csv('GHI_all.csv')
-
-def irradiance(m):
-    # Irradiance
-    file = 'Geodata/ERA5/Irradiance_All_1982-2020/GHI_all.csv'
-    df = pd.read_csv(file)
-    df = df.rename(columns={"time":"Time"})
-    df = df.set_index('Time') # Set time as index
-    df.index = pd.to_datetime(df.index, format='%Y-%m-%d %H:%M:%S', utc=True)
-
-    # Select columns with the specified area and rows with specified timeslice
-    col = m.geo_points.index.astype(str)
-    df_slice = df[col].loc[m.t_start:m.t_end]
-    df_slice = df_slice.add_prefix('Irr_')
-
-    df_slice = df_slice.resample('24H').sum()
-    df_slice = df_slice.resample('H').ffill()
-    '''
-    # Population weighted mean
-    weights = m.geo_points['Pup_weight'].values
-    for i in range(0,len(weights)):
-        df_slice.iloc[:,i] = df_slice.iloc[:,i] * weights[i]
-    df_slice_mean = pd.DataFrame({'Irr': df_slice.sum(axis=1)}, index=df_slice.index)
-    '''
-
-    #df_slice1 = df_slice.rolling(6, center=True).mean()
-    #df_slice2 = pd.DataFrame({'Irr': df_slice.mean(axis=1)}, index=df_slice.index)
-
-    return df_slice
-
 def temperature(m):
     file = setup.temperature_file
     df = pd.read_csv(file)
@@ -259,29 +213,3 @@ def temperature(m):
 
     return df_slice
 
-
-def windspeed(m):
-    file = 'windspeed_data_' + m.area + '.csv'
-    df = pd.read_csv(file)
-    df = df.rename(columns={"time":"Time"})
-    df = df.set_index('Time') # Set time as index
-    df.index = pd.to_datetime(df.index, format='%Y-%m-%d %H:%M:%S', utc=True)
-
-    #col = m.geo_points.index.astype(str)
-    df_slice = df.loc[m.t_start:m.t_end]
-
-    return df_slice
-
-def precip(m):
-    year = [2015,2016,2017,2018,2019]
-    df = pd.read_csv('Precipitation_DK/hele-landet-' + str(year[0]) +'.csv', sep=';', index_col=0, decimal=',')
-    df.index = pd.to_datetime(df.index, format='%Y-%m-%d %H:%M:%S', utc=True)
-    for i in range(1,len(year)):
-        df_new = pd.read_csv('Precipitation_DK/hele-landet-' + str(year[i]) +'.csv', sep=';', index_col=0, decimal=',')
-        df_new.index = pd.to_datetime(df_new.index, format='%Y-%m-%d %H:%M:%S', utc=True)
-        df = pd.concat([df, df_new])
-
-    df_upsample = df['Nedbør'].resample('H').ffill()
-    df_slice = df_upsample.loc[m.t_start:m.t_end]
-
-    return df_slice
