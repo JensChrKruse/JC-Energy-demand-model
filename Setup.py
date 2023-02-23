@@ -25,9 +25,13 @@ t_start_hindcast = '1982'
 t_end_hindcast = '2019'
 
 ## Filepaths
-datafolder = '/Users/JensChristian/Google Drev/Skole/DTU/Thesis/Modelling/Data' # Datafolder
+
+# Main data folder
+datafolder = '/Volumes/JC RejseHDD/Thesis backup/Git model/Data'
+
+# Paths relative to main data folder
 outputdatafolder = 'Hindcast output'
-corres_folder = 'Geodata/CorRES/'
+corres_folder = 'Geodata/CorRES/' 
 custom_holidays = 'custom_holidays.xlsx'
 temperature_file = 'temperature_100km.csv'
 NUTS_file = 'Geodata/Boundaries/Eurostats_NUTS/NUTS_selected_regions_w_bidding_zones.shp'
